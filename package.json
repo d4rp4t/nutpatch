@@ -67,6 +67,7 @@
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
+    "@noble/curves": ">=1.0.0",
     "react": "*",
     "react-native": "*",
     "react-native-nitro-modules": "*"
