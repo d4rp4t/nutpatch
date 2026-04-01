@@ -18,9 +18,18 @@ Pod::Spec.new do |s|
     "ios/**/*.{swift}",
     # Autolinking/Registration (Objective-C++)
     "ios/**/*.{m,mm}",
-    # Implementation (C++ objects)
-    "cpp/**/*.{hpp,cpp}",
+    # Implementation (C++ objects + C crypto core)
+    "cpp/core/**/*.{hpp,cpp,h,c}",
+    # secp256k1 (only the 3 compilation units, not tests/examples)
+    "cpp/vendor/secp256k1/src/secp256k1.c",
+    "cpp/vendor/secp256k1/src/precomputed_ecmult.c",
+    "cpp/vendor/secp256k1/src/precomputed_ecmult_gen.c",
   ]
+
+  s.pod_target_xcconfig = {
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/include" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/src" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1"',
+    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SECP256K1_STATIC=1',
+  }
 
   load 'nitrogen/generated/ios/NitroNutpatch+autolinking.rb'
   add_nitrogen_files(s)

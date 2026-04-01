@@ -12,7 +12,14 @@
     ],
     "androidCxxLibName": "NitroNutpatch"
   },
-  "autolinking": {},
+  "autolinking": {
+    "Crypto": {
+      "all": {
+        "language": "c++",
+        "implementationClassName": "HybridCashuCrypto"
+      }
+    }
+  },
   "ignorePaths": [
     "**/node_modules"
   ]
