@@ -47,6 +47,12 @@ crypto_err_t seckey_generate(uint8_t *out32);
 crypto_err_t create_blind_signature(const uint8_t *B_33, const uint8_t *seckey,
                                      uint8_t *out33);
 
+int verify_dleq_proof(const uint8_t *B_33, const uint8_t *C_33, const uint8_t *A_33,
+                      const uint8_t *s32, const uint8_t *e32);
+
+crypto_err_t create_dleq_proof(const uint8_t *B_33, const uint8_t *a32,
+                                uint8_t *s_out32, uint8_t *e_out32);
+
 #ifdef __cplusplus
 }
 #endif

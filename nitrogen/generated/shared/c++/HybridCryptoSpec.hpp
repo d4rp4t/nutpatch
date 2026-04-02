@@ -58,6 +58,8 @@ namespace margelo::nitro::nutpatch {
       virtual bool schnorrVerify(const std::shared_ptr<ArrayBuffer>& sig, const std::shared_ptr<ArrayBuffer>& msg, const std::shared_ptr<ArrayBuffer>& xonlyPubkey) = 0;
       virtual std::shared_ptr<ArrayBuffer> seckeyGenerate() = 0;
       virtual std::shared_ptr<ArrayBuffer> createBlindSignature(const std::shared_ptr<ArrayBuffer>& B_, const std::shared_ptr<ArrayBuffer>& seckey) = 0;
+      virtual bool verifyDleqProof(const std::shared_ptr<ArrayBuffer>& B_, const std::shared_ptr<ArrayBuffer>& C_, const std::shared_ptr<ArrayBuffer>& A, const std::shared_ptr<ArrayBuffer>& s, const std::shared_ptr<ArrayBuffer>& e) = 0;
+      virtual std::shared_ptr<ArrayBuffer> createDleqProof(const std::shared_ptr<ArrayBuffer>& B_, const std::shared_ptr<ArrayBuffer>& seckey) = 0;
 
     protected:
       // Hybrid Setup

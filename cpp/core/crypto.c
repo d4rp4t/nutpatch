@@ -1,5 +1,5 @@
 //
-// Created by d4rp4t on 18/02/2026.
+// Created by d4rp4t on 1/04/2026.
 //
 #include "crypto.h"
 #define VERIFY_CHECK(x) ((void)(x))
@@ -28,6 +28,18 @@ void crypto_init(void) {
 void crypto_free(void) {
     secp256k1_context_destroy(ctx);
     ctx = NULL;
+}
+
+static void ctcpy(uint8_t *dst, const uint8_t *src, size_t len) {
+    volatile uint8_t *d = dst;
+    const volatile uint8_t *s = src;
+    for (size_t i = 0; i < len; i++) d[i] = s[i];
+}
+
+static int ct_eq(const uint8_t *a, const uint8_t *b, size_t len) {
+    volatile uint8_t diff = 0;
+    for (size_t i = 0; i < len; i++) diff |= a[i] ^ b[i];
+    return (1 & ((diff - 1) >> 8));
 }
 
 static int secure_random(uint8_t *buf, size_t len) {
@@ -124,7 +136,7 @@ crypto_err_t unblind(const uint8_t *C_33, const uint8_t *r32,
     if (pubkey_parse(A_33, &A) != CRYPTO_OK) return CRYPTO_ERR_INVALID_POINT;
 
     uint8_t neg_r[32];
-    memcpy(neg_r, r32, 32);
+    ctcpy(neg_r, r32, 32);
     if (!secp256k1_ec_seckey_negate(ctx, neg_r))
         return CRYPTO_ERR_INVALID_SCALAR;
 
@@ -219,4 +231,90 @@ crypto_err_t create_blind_signature(const uint8_t *B_33, const uint8_t *seckey,
         return CRYPTO_ERR_INVALID_SCALAR;
 
     return pubkey_serialize(&B_, out33);
+}
+
+int verify_dleq_proof(const uint8_t *B_33, const uint8_t *C_33, const uint8_t *A_33,
+                      const uint8_t *s32, const uint8_t *e32) {
+    secp256k1_pubkey B_, C_, A;
+    if (pubkey_parse(B_33, &B_) != CRYPTO_OK) return 0;
+    if (pubkey_parse(C_33, &C_) != CRYPTO_OK) return 0;
+    if (pubkey_parse(A_33, &A)  != CRYPTO_OK) return 0;
+
+    uint8_t neg_e[32];
+    ctcpy(neg_e, e32, 32);
+    if (!secp256k1_ec_seckey_negate(ctx, neg_e)) return 0;
+
+    // R1 = s*G + (-e)*A
+    secp256k1_pubkey sG, neg_eA, R1;
+    if (!secp256k1_ec_pubkey_create(ctx, &sG, s32)) return 0;
+    ctcpy((uint8_t*)&neg_eA, (const uint8_t*)&A, sizeof(secp256k1_pubkey));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &neg_eA, neg_e)) return 0;
+    { const secp256k1_pubkey *pts[2] = { &sG, &neg_eA };
+      if (!secp256k1_ec_pubkey_combine(ctx, &R1, pts, 2)) return 0; }
+
+    // R2 = s*B_ + (-e)*C_
+    secp256k1_pubkey sB_, neg_eC_, R2;
+    ctcpy((uint8_t*)&sB_, (const uint8_t*)&B_, sizeof(secp256k1_pubkey));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &sB_, s32)) return 0;
+    ctcpy((uint8_t*)&neg_eC_, (const uint8_t*)&C_, sizeof(secp256k1_pubkey));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &neg_eC_, neg_e)) return 0;
+    { const secp256k1_pubkey *pts[2] = { &sB_, &neg_eC_ };
+      if (!secp256k1_ec_pubkey_combine(ctx, &R2, pts, 2)) return 0; }
+
+    // e' = hash_e([R1, R2, A, C_])
+    uint8_t flat[33 * 4];
+    pubkey_serialize(&R1, flat +  0);
+    pubkey_serialize(&R2, flat + 33);
+    pubkey_serialize(&A,  flat + 66);
+    pubkey_serialize(&C_, flat + 99);
+
+    uint8_t e_prime[32];
+    if (hash_e(flat, 4, e_prime) != CRYPTO_OK) return 0;
+
+    return ct_eq(e_prime, e32, 32);
+}
+
+crypto_err_t create_dleq_proof(const uint8_t *B_33, const uint8_t *a32,
+                                uint8_t *s_out32, uint8_t *e_out32) {
+    secp256k1_pubkey B_;
+    if (pubkey_parse(B_33, &B_) != CRYPTO_OK) return CRYPTO_ERR_INVALID_POINT;
+
+    uint8_t r[32];
+    crypto_err_t err = seckey_generate(r);
+    if (err != CRYPTO_OK) return err;
+
+    // R1 = r*G
+    secp256k1_pubkey R1;
+    if (!secp256k1_ec_pubkey_create(ctx, &R1, r)) return CRYPTO_ERR_INVALID_SCALAR;
+
+    // R2 = r*B_
+    secp256k1_pubkey R2;
+    ctcpy((uint8_t*)&R2, (const uint8_t*)&B_, sizeof(secp256k1_pubkey));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &R2, r)) return CRYPTO_ERR_INVALID_POINT;
+
+    // C_ = a*B_
+    secp256k1_pubkey C_;
+    ctcpy((uint8_t*)&C_, (const uint8_t*)&B_, sizeof(secp256k1_pubkey));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &C_, a32)) return CRYPTO_ERR_INVALID_POINT;
+
+    // A = a*G
+    secp256k1_pubkey A;
+    if (!secp256k1_ec_pubkey_create(ctx, &A, a32)) return CRYPTO_ERR_INVALID_SCALAR;
+
+    // e = hash_e([R1, R2, A, C_])
+    uint8_t flat[33 * 4];
+    pubkey_serialize(&R1, flat +  0);
+    pubkey_serialize(&R2, flat + 33);
+    pubkey_serialize(&A,  flat + 66);
+    pubkey_serialize(&C_, flat + 99);
+    if (hash_e(flat, 4, e_out32) != CRYPTO_OK) return CRYPTO_ERR_INVALID_POINT;
+
+    // s = r + e*a mod n
+    uint8_t ea[32];
+    ctcpy(ea, a32, 32);
+    if (!secp256k1_ec_seckey_tweak_mul(ctx, ea, e_out32)) return CRYPTO_ERR_INVALID_SCALAR;
+    ctcpy(s_out32, r, 32);
+    if (!secp256k1_ec_seckey_tweak_add(ctx, s_out32, ea)) return CRYPTO_ERR_INVALID_SCALAR;
+
+    return CRYPTO_OK;
 }

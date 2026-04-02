@@ -23,6 +23,8 @@ namespace margelo::nitro::nutpatch {
       prototype.registerHybridMethod("schnorrVerify", &HybridCryptoSpec::schnorrVerify);
       prototype.registerHybridMethod("seckeyGenerate", &HybridCryptoSpec::seckeyGenerate);
       prototype.registerHybridMethod("createBlindSignature", &HybridCryptoSpec::createBlindSignature);
+      prototype.registerHybridMethod("verifyDleqProof", &HybridCryptoSpec::verifyDleqProof);
+      prototype.registerHybridMethod("createDleqProof", &HybridCryptoSpec::createDleqProof);
     });
   }
 

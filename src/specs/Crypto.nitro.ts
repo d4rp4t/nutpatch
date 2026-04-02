@@ -20,4 +20,13 @@ export interface Crypto extends HybridObject<{
 
   seckeyGenerate(): ArrayBuffer
   createBlindSignature(B_: ArrayBuffer, seckey: ArrayBuffer): ArrayBuffer
+
+  verifyDleqProof(
+    B_: ArrayBuffer,
+    C_: ArrayBuffer,
+    A: ArrayBuffer,
+    s: ArrayBuffer,
+    e: ArrayBuffer
+  ): boolean
+  createDleqProof(B_: ArrayBuffer, seckey: ArrayBuffer): ArrayBuffer
 }

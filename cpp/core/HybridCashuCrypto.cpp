@@ -140,4 +140,36 @@ std::shared_ptr<ArrayBuffer> HybridCashuCrypto::createBlindSignature(
     return out;
 }
 
+bool HybridCashuCrypto::verifyDleqProof(
+    const std::shared_ptr<ArrayBuffer>& B_,
+    const std::shared_ptr<ArrayBuffer>& C_,
+    const std::shared_ptr<ArrayBuffer>& A,
+    const std::shared_ptr<ArrayBuffer>& s,
+    const std::shared_ptr<ArrayBuffer>& e) {
+
+    if (B_->size() != 33 || C_->size() != 33 || A->size() != 33)
+        return false;
+    if (s->size() != 32 || e->size() != 32)
+        return false;
+
+    return ::verify_dleq_proof(B_->data(), C_->data(), A->data(),
+                                s->data(), e->data()) == 1;
+}
+
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::createDleqProof(
+    const std::shared_ptr<ArrayBuffer>& B_,
+    const std::shared_ptr<ArrayBuffer>& seckey) {
+
+    if (B_->size() != 33)
+        throw std::invalid_argument("createDleqProof: B_ must be 33 bytes");
+    if (seckey->size() != 32)
+        throw std::invalid_argument("createDleqProof: seckey must be 32 bytes");
+
+    auto out = makeBuffer(64);
+    checkErr(::create_dleq_proof(B_->data(), seckey->data(),
+                                  out->data(), out->data() + 32),
+             "createDleqProof failed");
+    return out;
+}
+
 } // namespace margelo::nitro::nutpatch

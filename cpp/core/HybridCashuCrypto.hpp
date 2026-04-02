@@ -36,6 +36,14 @@ public:
     std::shared_ptr<ArrayBuffer> seckeyGenerate() override;
     std::shared_ptr<ArrayBuffer> createBlindSignature(const std::shared_ptr<ArrayBuffer>& B_,
                                                        const std::shared_ptr<ArrayBuffer>& seckey) override;
+
+    bool verifyDleqProof(const std::shared_ptr<ArrayBuffer>& B_,
+                         const std::shared_ptr<ArrayBuffer>& C_,
+                         const std::shared_ptr<ArrayBuffer>& A,
+                         const std::shared_ptr<ArrayBuffer>& s,
+                         const std::shared_ptr<ArrayBuffer>& e) override;
+    std::shared_ptr<ArrayBuffer> createDleqProof(const std::shared_ptr<ArrayBuffer>& B_,
+                                                  const std::shared_ptr<ArrayBuffer>& seckey) override;
 };
 
 } // namespace margelo::nitro::nutpatch
