@@ -6,6 +6,7 @@
 
 #include "../../nitrogen/generated/shared/c++/HybridCryptoSpec.hpp"
 #include <NitroModules/ArrayBuffer.hpp>
+#include <vector>
 
 namespace margelo::nitro::nutpatch {
 
@@ -13,7 +14,6 @@ using namespace margelo::nitro;
 
 class HybridCashuCrypto : public HybridCryptoSpec {
 public:
-
     HybridCashuCrypto();
     ~HybridCashuCrypto() override;
 
@@ -24,6 +24,18 @@ public:
                                           const std::shared_ptr<ArrayBuffer>& blindingFactor,
                                           const std::shared_ptr<ArrayBuffer>& mintPubkey) override;
 
+    std::shared_ptr<ArrayBuffer> computeSha256(const std::shared_ptr<ArrayBuffer>& message) override;
+    std::shared_ptr<ArrayBuffer> hashE(const std::vector<std::shared_ptr<ArrayBuffer>>& pubkeys) override;
+
+    std::shared_ptr<ArrayBuffer> schnorrSign(const std::shared_ptr<ArrayBuffer>& seckey,
+                                              const std::shared_ptr<ArrayBuffer>& msg) override;
+    bool schnorrVerify(const std::shared_ptr<ArrayBuffer>& sig,
+                       const std::shared_ptr<ArrayBuffer>& msg,
+                       const std::shared_ptr<ArrayBuffer>& xonlyPubkey) override;
+
+    std::shared_ptr<ArrayBuffer> seckeyGenerate() override;
+    std::shared_ptr<ArrayBuffer> createBlindSignature(const std::shared_ptr<ArrayBuffer>& B_,
+                                                       const std::shared_ptr<ArrayBuffer>& seckey) override;
 };
 
 } // namespace margelo::nitro::nutpatch

@@ -16,6 +16,7 @@
 
 
 #include <NitroModules/ArrayBuffer.hpp>
+#include <vector>
 
 namespace margelo::nitro::nutpatch {
 
@@ -51,6 +52,12 @@ namespace margelo::nitro::nutpatch {
       virtual std::shared_ptr<ArrayBuffer> hashToCurve(const std::shared_ptr<ArrayBuffer>& message) = 0;
       virtual std::shared_ptr<ArrayBuffer> blind(const std::shared_ptr<ArrayBuffer>& message, const std::shared_ptr<ArrayBuffer>& blindingFactor) = 0;
       virtual std::shared_ptr<ArrayBuffer> unblind(const std::shared_ptr<ArrayBuffer>& blindedSignature, const std::shared_ptr<ArrayBuffer>& blindingFactor, const std::shared_ptr<ArrayBuffer>& mintPubkey) = 0;
+      virtual std::shared_ptr<ArrayBuffer> computeSha256(const std::shared_ptr<ArrayBuffer>& message) = 0;
+      virtual std::shared_ptr<ArrayBuffer> hashE(const std::vector<std::shared_ptr<ArrayBuffer>>& pubkeys) = 0;
+      virtual std::shared_ptr<ArrayBuffer> schnorrSign(const std::shared_ptr<ArrayBuffer>& seckey, const std::shared_ptr<ArrayBuffer>& msg) = 0;
+      virtual bool schnorrVerify(const std::shared_ptr<ArrayBuffer>& sig, const std::shared_ptr<ArrayBuffer>& msg, const std::shared_ptr<ArrayBuffer>& xonlyPubkey) = 0;
+      virtual std::shared_ptr<ArrayBuffer> seckeyGenerate() = 0;
+      virtual std::shared_ptr<ArrayBuffer> createBlindSignature(const std::shared_ptr<ArrayBuffer>& B_, const std::shared_ptr<ArrayBuffer>& seckey) = 0;
 
     protected:
       // Hybrid Setup

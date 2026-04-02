@@ -17,6 +17,12 @@ namespace margelo::nitro::nutpatch {
       prototype.registerHybridMethod("hashToCurve", &HybridCryptoSpec::hashToCurve);
       prototype.registerHybridMethod("blind", &HybridCryptoSpec::blind);
       prototype.registerHybridMethod("unblind", &HybridCryptoSpec::unblind);
+      prototype.registerHybridMethod("computeSha256", &HybridCryptoSpec::computeSha256);
+      prototype.registerHybridMethod("hashE", &HybridCryptoSpec::hashE);
+      prototype.registerHybridMethod("schnorrSign", &HybridCryptoSpec::schnorrSign);
+      prototype.registerHybridMethod("schnorrVerify", &HybridCryptoSpec::schnorrVerify);
+      prototype.registerHybridMethod("seckeyGenerate", &HybridCryptoSpec::seckeyGenerate);
+      prototype.registerHybridMethod("createBlindSignature", &HybridCryptoSpec::createBlindSignature);
     });
   }
 

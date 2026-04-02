@@ -18,7 +18,11 @@ target_include_directories(secp256k1 PUBLIC
   ../cpp/vendor/secp256k1/src
   ../cpp/vendor/secp256k1
 )
-target_compile_definitions(secp256k1 PRIVATE SECP256K1_STATIC=1)
+target_compile_definitions(secp256k1 PRIVATE
+  SECP256K1_STATIC=1
+  ENABLE_MODULE_EXTRAKEYS=1
+  ENABLE_MODULE_SCHNORRSIG=1
+)
 
 # ---------------------------------------------------------------------------
 # Main library

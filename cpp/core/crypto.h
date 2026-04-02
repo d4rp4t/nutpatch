@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <secp256k1.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,16 +17,35 @@ typedef enum {
     CRYPTO_ERR_INVALID_POINT,
     CRYPTO_ERR_INVALID_SCALAR,
     CRYPTO_ERR_HASH_TO_CURVE,
+    CRYPTO_ERR_SCHNORR_SIGN,
+    CRYPTO_ERR_SCHNORR_VERIFY,
+    CRYPTO_ERR_RANDOM,
 } crypto_err_t;
 
+// Context
 void crypto_init(void);
 void crypto_free(void);
-secp256k1_context *crypto_ctx(void);
 
-crypto_err_t hash_to_curve(const uint8_t *msg, size_t msg_len, secp256k1_pubkey *out);
-crypto_err_t blind(const secp256k1_pubkey *Y, const uint8_t *r, secp256k1_pubkey *out);
-crypto_err_t unblind(const secp256k1_pubkey *C_, const uint8_t *r,
-                     const secp256k1_pubkey *A, secp256k1_pubkey *out);
+crypto_err_t hash_to_curve(const uint8_t *msg, size_t msg_len, uint8_t *out33);
+
+crypto_err_t blind(const uint8_t *msg, size_t msg_len, const uint8_t *r32, uint8_t *out33);
+
+crypto_err_t unblind(const uint8_t *C_33, const uint8_t *r32,
+                     const uint8_t *A_33, uint8_t *out33);
+
+crypto_err_t hash_e(const uint8_t *pubkeys_33, size_t num_pubkeys, uint8_t *out32);
+
+void compute_sha256(const uint8_t *msg, size_t msg_len, uint8_t *out32);
+
+crypto_err_t schnorr_sign(const uint8_t *seckey, const uint8_t *msg32, uint8_t *sig_out);
+
+crypto_err_t schnorr_verify(const uint8_t *sig, const uint8_t *msg32,
+                             const uint8_t *xonly_pubkey32);
+
+crypto_err_t seckey_generate(uint8_t *out32);
+
+crypto_err_t create_blind_signature(const uint8_t *B_33, const uint8_t *seckey,
+                                     uint8_t *out33);
 
 #ifdef __cplusplus
 }

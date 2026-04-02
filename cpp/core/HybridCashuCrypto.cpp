@@ -5,42 +5,9 @@
 #include "HybridCashuCrypto.hpp"
 #include "crypto.h"
 
-#include <NitroModules/ArrayBuffer.hpp>
-#include <secp256k1.h>
-
-#include <fcntl.h>
 #include <stdexcept>
-#include <unistd.h>
 
 namespace margelo::nitro::nutpatch {
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-static void secure_random(uint8_t* buf, size_t len) {
-    int fd = open("/dev/urandom", O_RDONLY);
-    if (fd < 0) {
-        throw std::runtime_error("secure_random: failed to open /dev/urandom");
-    }
-    ssize_t n = read(fd, buf, len);
-    close(fd);
-    if (n < 0 || static_cast<size_t>(n) != len) {
-        throw std::runtime_error("secure_random: short read");
-    }
-}
-
-static std::shared_ptr<ArrayBuffer> pubkeyToBuffer(const secp256k1_pubkey& pubkey) {
-    auto buf = ArrayBuffer::allocate(33);
-    size_t len = 33;
-    secp256k1_ec_pubkey_serialize(crypto_ctx(), buf->data(), &len, &pubkey,
-                                  SECP256K1_EC_COMPRESSED);
-    return buf;
-}
-
-// ---------------------------------------------------------------------------
-// Lifecycle
-// ---------------------------------------------------------------------------
 
 HybridCashuCrypto::HybridCashuCrypto() : HybridObject(TAG) {
     crypto_init();
@@ -50,41 +17,36 @@ HybridCashuCrypto::~HybridCashuCrypto() {
     crypto_free();
 }
 
-// ---------------------------------------------------------------------------
-// Methods
-// ---------------------------------------------------------------------------
+// Helpers
+static std::shared_ptr<ArrayBuffer> makeBuffer(size_t size) {
+    return ArrayBuffer::allocate(size);
+}
 
+static void checkErr(crypto_err_t err, const char *msg) {
+    if (err != CRYPTO_OK) throw std::runtime_error(msg);
+}
+
+// Methods
 std::shared_ptr<ArrayBuffer> HybridCashuCrypto::hashToCurve(
     const std::shared_ptr<ArrayBuffer>& message) {
 
-    secp256k1_pubkey point;
-    crypto_err_t err = ::hash_to_curve(message->data(), message->size(), &point);
-    if (err != CRYPTO_OK) {
-        throw std::runtime_error("hashToCurve failed");
-    }
-    return pubkeyToBuffer(point);
+    auto out = makeBuffer(33);
+    checkErr(::hash_to_curve(message->data(), message->size(), out->data()),
+             "hashToCurve failed");
+    return out;
 }
 
 std::shared_ptr<ArrayBuffer> HybridCashuCrypto::blind(
     const std::shared_ptr<ArrayBuffer>& message,
     const std::shared_ptr<ArrayBuffer>& blindingFactor) {
 
-    if (blindingFactor->size() != 32) {
+    if (blindingFactor->size() != 32)
         throw std::invalid_argument("blind: blindingFactor must be 32 bytes");
-    }
 
-    secp256k1_pubkey Y;
-    crypto_err_t err = ::hash_to_curve(message->data(), message->size(), &Y);
-    if (err != CRYPTO_OK) {
-        throw std::runtime_error("blind: hash_to_curve failed");
-    }
-
-    secp256k1_pubkey B_;
-    err = ::blind(&Y, blindingFactor->data(), &B_);
-    if (err != CRYPTO_OK) {
-        throw std::runtime_error("blind failed");
-    }
-    return pubkeyToBuffer(B_);
+    auto out = makeBuffer(33);
+    checkErr(::blind(message->data(), message->size(), blindingFactor->data(), out->data()),
+             "blind failed");
+    return out;
 }
 
 std::shared_ptr<ArrayBuffer> HybridCashuCrypto::unblind(
@@ -92,28 +54,90 @@ std::shared_ptr<ArrayBuffer> HybridCashuCrypto::unblind(
     const std::shared_ptr<ArrayBuffer>& blindingFactor,
     const std::shared_ptr<ArrayBuffer>& mintPubkey) {
 
-    if (blindingFactor->size() != 32) {
+    if (blindedSignature->size() != 33)
+        throw std::invalid_argument("unblind: blindedSignature must be 33 bytes");
+    if (blindingFactor->size() != 32)
         throw std::invalid_argument("unblind: blindingFactor must be 32 bytes");
+    if (mintPubkey->size() != 33)
+        throw std::invalid_argument("unblind: mintPubkey must be 33 bytes");
+
+    auto out = makeBuffer(33);
+    checkErr(::unblind(blindedSignature->data(), blindingFactor->data(),
+                       mintPubkey->data(), out->data()),
+             "unblind failed");
+    return out;
+}
+
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::computeSha256(
+    const std::shared_ptr<ArrayBuffer>& message) {
+
+    auto out = makeBuffer(32);
+    ::compute_sha256(message->data(), message->size(), out->data());
+    return out;
+}
+
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::hashE(
+    const std::vector<std::shared_ptr<ArrayBuffer>>& pubkeys) {
+
+    // flatten: each pubkey must be 33 bytes
+    std::vector<uint8_t> flat;
+    flat.reserve(pubkeys.size() * 33);
+    for (const auto& pk : pubkeys) {
+        if (pk->size() != 33)
+            throw std::invalid_argument("hashE: each pubkey must be 33 bytes");
+        flat.insert(flat.end(), pk->data(), pk->data() + 33);
     }
 
-    secp256k1_pubkey C_;
-    if (!secp256k1_ec_pubkey_parse(crypto_ctx(), &C_,
-                                    blindedSignature->data(), blindedSignature->size())) {
-        throw std::invalid_argument("unblind: invalid blindedSignature");
-    }
+    auto out = makeBuffer(32);
+    checkErr(::hash_e(flat.data(), pubkeys.size(), out->data()), "hashE failed");
+    return out;
+}
 
-    secp256k1_pubkey A;
-    if (!secp256k1_ec_pubkey_parse(crypto_ctx(), &A,
-                                    mintPubkey->data(), mintPubkey->size())) {
-        throw std::invalid_argument("unblind: invalid mintPubkey");
-    }
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::schnorrSign(
+    const std::shared_ptr<ArrayBuffer>& seckey,
+    const std::shared_ptr<ArrayBuffer>& msg) {
 
-    secp256k1_pubkey C;
-    crypto_err_t err = ::unblind(&C_, blindingFactor->data(), &A, &C);
-    if (err != CRYPTO_OK) {
-        throw std::runtime_error("unblind failed");
-    }
-    return pubkeyToBuffer(C);
+    if (seckey->size() != 32)
+        throw std::invalid_argument("schnorrSign: seckey must be 32 bytes");
+    if (msg->size() != 32)
+        throw std::invalid_argument("schnorrSign: msg must be 32 bytes");
+
+    auto out = makeBuffer(64);
+    checkErr(::schnorr_sign(seckey->data(), msg->data(), out->data()),
+             "schnorrSign failed");
+    return out;
+}
+
+bool HybridCashuCrypto::schnorrVerify(
+    const std::shared_ptr<ArrayBuffer>& sig,
+    const std::shared_ptr<ArrayBuffer>& msg,
+    const std::shared_ptr<ArrayBuffer>& xonlyPubkey) {
+
+    if (sig->size() != 64 || msg->size() != 32 || xonlyPubkey->size() != 32)
+        return false;
+
+    return ::schnorr_verify(sig->data(), msg->data(), xonlyPubkey->data()) == CRYPTO_OK;
+}
+
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::seckeyGenerate() {
+    auto out = makeBuffer(32);
+    checkErr(::seckey_generate(out->data()), "seckeyGenerate failed");
+    return out;
+}
+
+std::shared_ptr<ArrayBuffer> HybridCashuCrypto::createBlindSignature(
+    const std::shared_ptr<ArrayBuffer>& B_,
+    const std::shared_ptr<ArrayBuffer>& seckey) {
+
+    if (B_->size() != 33)
+        throw std::invalid_argument("createBlindSignature: B_ must be 33 bytes");
+    if (seckey->size() != 32)
+        throw std::invalid_argument("createBlindSignature: seckey must be 32 bytes");
+
+    auto out = makeBuffer(33);
+    checkErr(::create_blind_signature(B_->data(), seckey->data(), out->data()),
+             "createBlindSignature failed");
+    return out;
 }
 
 } // namespace margelo::nitro::nutpatch

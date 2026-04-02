@@ -28,7 +28,7 @@ Pod::Spec.new do |s|
 
   s.pod_target_xcconfig = {
     'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/include" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/src" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1"',
-    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SECP256K1_STATIC=1',
+    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SECP256K1_STATIC=1 ENABLE_MODULE_EXTRAKEYS=1 ENABLE_MODULE_SCHNORRSIG=1',
   }
 
   load 'nitrogen/generated/ios/NitroNutpatch+autolinking.rb'
