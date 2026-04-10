@@ -33,7 +33,7 @@ target_sources(
   # Autolinking Setup
   ../nitrogen/generated/android/NitroNutpatchOnLoad.cpp
   # Shared Nitrogen C++ sources
-  ../nitrogen/generated/shared/c++/HybridCryptoSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridOutputCreatorSpec.cpp
   # Android-specific Nitrogen C++ sources
   
 )

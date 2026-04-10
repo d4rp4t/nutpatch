@@ -265,6 +265,16 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.28.5"
 
+"@cashu/cashu-ts@^3.6.1":
+  version "3.6.3"
+  resolved "https://registry.yarnpkg.com/@cashu/cashu-ts/-/cashu-ts-3.6.3.tgz#34421e5abbea3c13f965949a02f2a0bf61030d5e"
+  integrity sha512-xP9jZkZEd2JD5UBGOebBsDSPykEJJo6xmG3MXQMOwizmN115atzHJgKvaBVFwOT2HPW5+1EMXfp4jpUd/5wEjQ==
+  dependencies:
+    "@noble/curves" "^2.0.1"
+    "@noble/hashes" "^2.0.1"
+    "@scure/base" "^2.0.0"
+    "@scure/bip32" "^2.0.1"
+
 "@eslint-community/eslint-utils@^4.2.0", "@eslint-community/eslint-utils@^4.9.1":
   version "4.9.1"
   resolved "https://registry.yarnpkg.com/@eslint-community/eslint-utils/-/eslint-utils-4.9.1.tgz#4e90af67bc51ddee6cdef5284edf572ec376b595"
@@ -521,7 +531,7 @@
   dependencies:
     eslint-scope "5.1.1"
 
-"@noble/curves@^2.0.1":
+"@noble/curves@2.0.1", "@noble/curves@^2.0.1":
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-2.0.1.tgz#64ba8bd5e8564a02942655602515646df1cdb3ad"
   integrity sha512-vs1Az2OOTBiP4q0pwjW5aF0xp9n4MxVrmkFBxc6EKZc6ddYx5gaZiAsZoq0uRRXWbi3AT/sBqn05eRPtn1JCPw==
@@ -645,6 +655,20 @@
   dependencies:
     invariant "^2.2.4"
     nullthrows "^1.1.1"
+
+"@scure/base@2.0.0", "@scure/base@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@scure/base/-/base-2.0.0.tgz#ba6371fddf92c2727e88ad6ab485db6e624f9a98"
+  integrity sha512-3E1kpuZginKkek01ovG8krQ0Z44E3DHPjc5S2rjJw9lZn3KSQOs8S7wqikF/AH7iRanHypj85uGyxk0XAyC37w==
+
+"@scure/bip32@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@scure/bip32/-/bip32-2.0.1.tgz#4ceea207cee8626d3fe8f0b6ab68b6af8f81c482"
+  integrity sha512-4Md1NI5BzoVP+bhyJaY3K6yMesEFzNS1sE/cP+9nuvE7p/b0kx9XbpDHHFl8dHtufcbdHRUUQdRqLIPHN/s7yA==
+  dependencies:
+    "@noble/curves" "2.0.1"
+    "@noble/hashes" "2.0.1"
+    "@scure/base" "2.0.0"
 
 "@sinclair/typebox@^0.27.8":
   version "0.27.10"
@@ -4247,11 +4271,6 @@ typed-array-length@^1.0.7:
     is-typed-array "^1.1.13"
     possible-typed-array-names "^1.0.0"
     reflect.getprototypeof "^1.0.6"
-
-typescript@^5.8.3:
-  version "5.9.3"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.9.3.tgz#5b4f59e15310ab17a216f5d6cf53ee476ede670f"
-  integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
 unbox-primitive@^1.1.0:
   version "1.1.0"

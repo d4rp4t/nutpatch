@@ -7,6 +7,26 @@
   "types": "lib/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "require": "./lib/index.js",
+      "types": "./lib/index.d.ts",
+      "react-native": "./src/index.ts"
+    },
+    "./core": {
+      "import": "./lib/crypto/core.js",
+      "require": "./lib/crypto/core.js",
+      "types": "./lib/crypto/core.d.ts",
+      "react-native": "./src/crypto/core.ts"
+    },
+    "./NUT12": {
+      "import": "./lib/crypto/NUT12.js",
+      "require": "./lib/crypto/NUT12.js",
+      "types": "./lib/crypto/NUT12.d.ts",
+      "react-native": "./src/crypto/NUT12.ts"
+    }
+  },
   "files": [
     "src",
     "react-native.config.js",
@@ -54,6 +74,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@cashu/cashu-ts": "^3.6.1",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@react-native/eslint-config": "0.83.0",
@@ -65,10 +86,10 @@
     "prettier": "^3.3.3",
     "react": "19.2.0",
     "react-native": "0.83.0",
-    "react-native-nitro-modules": "*",
-    "typescript": "^5.8.3"
+    "react-native-nitro-modules": "*"
   },
   "peerDependencies": {
+    "typescript": "^5.8.3",
     "@noble/curves": ">=1.0.0",
     "react": "*",
     "react-native": "*",

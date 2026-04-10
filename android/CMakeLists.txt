@@ -12,6 +12,7 @@ add_library(secp256k1 STATIC
   ../cpp/vendor/secp256k1/src/secp256k1.c
   ../cpp/vendor/secp256k1/src/precomputed_ecmult.c
   ../cpp/vendor/secp256k1/src/precomputed_ecmult_gen.c
+        ../cpp/core/HybridOutputCreator.cpp
 )
 target_include_directories(secp256k1 PUBLIC
   ../cpp/vendor/secp256k1/include
@@ -29,8 +30,9 @@ target_compile_definitions(secp256k1 PRIVATE
 # ---------------------------------------------------------------------------
 add_library(${PACKAGE_NAME} SHARED
   src/main/cpp/cpp-adapter.cpp
-  ../cpp/core/HybridCashuCrypto.cpp
+  ../cpp/core/HybridOutputCreator.cpp
   ../cpp/core/crypto.c
+  ../cpp/core/HybridOutputCreator.cpp
 )
 
 # Add Nitrogen specs :)
@@ -40,6 +42,8 @@ target_include_directories(${PACKAGE_NAME} PRIVATE
   src/main/cpp
   ../cpp/core
   ../cpp/vendor/secp256k1/include
+  ../node_modules/react-native-nitro-modules/cpp/core
+  ../node_modules/react-native-nitro-modules/cpp
 )
 
 find_library(LOG_LIB log)

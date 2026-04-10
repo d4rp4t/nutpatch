@@ -13,10 +13,10 @@
     "androidCxxLibName": "NitroNutpatch"
   },
   "autolinking": {
-    "Crypto": {
+    "OutputCreator": {
       "all": {
         "language": "c++",
-        "implementationClassName": "HybridCashuCrypto"
+        "implementationClassName": "HybridOutputCreator"
       }
     }
   },

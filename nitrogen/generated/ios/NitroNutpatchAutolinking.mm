@@ -10,7 +10,7 @@
 
 #import <type_traits>
 
-#include "HybridCashuCrypto.hpp"
+#include "HybridOutputCreator.hpp"
 
 @interface NitroNutpatchAutolinking : NSObject
 @end
@@ -22,12 +22,12 @@
   using namespace margelo::nitro::nutpatch;
 
   HybridObjectRegistry::registerHybridObjectConstructor(
-    "Crypto",
+    "OutputCreator",
     []() -> std::shared_ptr<HybridObject> {
-      static_assert(std::is_default_constructible_v<HybridCashuCrypto>,
-                    "The HybridObject \"HybridCashuCrypto\" is not default-constructible! "
+      static_assert(std::is_default_constructible_v<HybridOutputCreator>,
+                    "The HybridObject \"HybridOutputCreator\" is not default-constructible! "
                     "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
-      return std::make_shared<HybridCashuCrypto>();
+      return std::make_shared<HybridOutputCreator>();
     }
   );
 }
