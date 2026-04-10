@@ -24,10 +24,15 @@ Pod::Spec.new do |s|
     "cpp/vendor/secp256k1/src/secp256k1.c",
     "cpp/vendor/secp256k1/src/precomputed_ecmult.c",
     "cpp/vendor/secp256k1/src/precomputed_ecmult_gen.c",
+    # trezor crypto (HMAC-SHA256/512 for NUT-13 deterministic derivation)
+    "cpp/vendor/trezor/sha2.c",
+    "cpp/vendor/trezor/hmac.c",
+    "cpp/vendor/trezor/memzero.c",
+    "cpp/vendor/trezor/*.h",
   ]
 
   s.pod_target_xcconfig = {
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/include" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/src" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1"',
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/include" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1/src" "$(PODS_TARGET_SRCROOT)/cpp/vendor/secp256k1" "$(PODS_TARGET_SRCROOT)/cpp/vendor/trezor"',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SECP256K1_STATIC=1 ENABLE_MODULE_EXTRAKEYS=1 ENABLE_MODULE_SCHNORRSIG=1',
   }
 

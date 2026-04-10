@@ -5,14 +5,10 @@ set (PACKAGE_NAME NitroNutpatch)
 set (CMAKE_VERBOSE_MAKEFILE ON)
 set (CMAKE_CXX_STANDARD 20)
 
-# ---------------------------------------------------------------------------
-# secp256k1
-# ---------------------------------------------------------------------------
 add_library(secp256k1 STATIC
   ../cpp/vendor/secp256k1/src/secp256k1.c
   ../cpp/vendor/secp256k1/src/precomputed_ecmult.c
   ../cpp/vendor/secp256k1/src/precomputed_ecmult_gen.c
-        ../cpp/core/HybridOutputCreator.cpp
 )
 target_include_directories(secp256k1 PUBLIC
   ../cpp/vendor/secp256k1/include
@@ -25,14 +21,18 @@ target_compile_definitions(secp256k1 PRIVATE
   ENABLE_MODULE_SCHNORRSIG=1
 )
 
-# ---------------------------------------------------------------------------
-# Main library
-# ---------------------------------------------------------------------------
+add_library(trezor_crypto STATIC
+  ../cpp/vendor/trezor/sha2.c
+  ../cpp/vendor/trezor/hmac.c
+  ../cpp/vendor/trezor/memzero.c
+)
+target_include_directories(trezor_crypto PUBLIC ../cpp/vendor/trezor)
+
+
 add_library(${PACKAGE_NAME} SHARED
   src/main/cpp/cpp-adapter.cpp
   ../cpp/core/HybridOutputCreator.cpp
   ../cpp/core/crypto.c
-  ../cpp/core/HybridOutputCreator.cpp
 )
 
 # Add Nitrogen specs :)
@@ -42,6 +42,7 @@ target_include_directories(${PACKAGE_NAME} PRIVATE
   src/main/cpp
   ../cpp/core
   ../cpp/vendor/secp256k1/include
+  ../cpp/vendor/trezor
   ../node_modules/react-native-nitro-modules/cpp/core
   ../node_modules/react-native-nitro-modules/cpp
 )
@@ -53,4 +54,5 @@ target_link_libraries(
   ${LOG_LIB}
   android
   secp256k1
+  trezor_crypto
 )

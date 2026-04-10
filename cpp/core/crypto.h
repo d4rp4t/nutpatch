@@ -26,7 +26,6 @@ typedef enum {
 void crypto_init(void);
 void crypto_free(void);
 
-int secure_random(uint8_t *buf, size_t len);
 crypto_err_t hash_to_curve(const uint8_t *msg, size_t msg_len, uint8_t *out33);
 
 crypto_err_t blind(const uint8_t *msg, size_t msg_len, const uint8_t *r32, uint8_t *out33);
@@ -53,6 +52,18 @@ int verify_dleq_proof(const uint8_t *B_33, const uint8_t *C_33, const uint8_t *A
 
 crypto_err_t create_dleq_proof(const uint8_t *B_33, const uint8_t *a32,
                                 uint8_t *s_out32, uint8_t *e_out32);
+
+crypto_err_t derive_secret(
+    const uint8_t *seed, size_t seed_len,
+    const char    *keyset_id,
+    uint64_t       counter,
+    uint8_t       *out32);
+
+crypto_err_t derive_blinding_factor(
+    const uint8_t *seed, size_t seed_len,
+    const char    *keyset_id,
+    uint64_t       counter,
+    uint8_t       *out32);
 
 
 #ifdef __cplusplus

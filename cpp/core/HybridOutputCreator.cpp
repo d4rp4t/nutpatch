@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "crypto.h"
+#include "../vendor/trezor/memzero.h"
 #include "HybridOutputCreator.hpp"
 #include "NativeOutputData.hpp"
 #include "NitroP2PKOptions.hpp"
@@ -26,6 +27,17 @@ namespace margelo::nitro::nutpatch {
         }
         return result;
     }
+
+    // RAII helper: zeros a memory region when it goes out of scope (including on throw)
+    class ZeroGuard {
+        void*  ptr_;
+        size_t len_;
+    public:
+        ZeroGuard(void* p, size_t n) : ptr_(p), len_(n) {}
+        ~ZeroGuard() { memzero(ptr_, len_); }
+        ZeroGuard(const ZeroGuard&)            = delete;
+        ZeroGuard& operator=(const ZeroGuard&) = delete;
+    };
 
     static void generate_scalar(uint8_t* out32) {
         if (seckey_generate(out32) != CRYPTO_OK)
@@ -87,24 +99,19 @@ namespace margelo::nitro::nutpatch {
         uint64_t amount,
         const std::string& keysetId
     ) {
-        uint8_t raw[32];
+        uint8_t raw[32];  ZeroGuard zg_raw(raw, sizeof(raw));
         generate_scalar(raw);
         std::string secret_hex = bytes_to_hex(raw, 32);
 
-        uint8_t r[32], B_[33];
+        uint8_t r[32], B_[33];  ZeroGuard zg_r(r, sizeof(r));
         generate_scalar(r);
 
-        crypto_err_t err = blind(
-            reinterpret_cast<const uint8_t*>(secret_hex.data()),
-            secret_hex.size(),
-            r,
-            B_
-        );
-        if (err != CRYPTO_OK)
+        if (blind(reinterpret_cast<const uint8_t*>(secret_hex.data()),
+                  secret_hex.size(), r, B_) != CRYPTO_OK)
             throw std::runtime_error("blind() failed");
 
         return NativeOutputData(
-            BlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
+            NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
             bytes_to_hex(r, 32),
             secret_hex
         );
@@ -214,25 +221,19 @@ namespace margelo::nitro::nutpatch {
         if (p2pk.pubkeys.empty())
             throw std::runtime_error("P2PK requires at least one pubkey");
 
-        uint8_t nonce_raw[32];
+        uint8_t nonce_raw[32];  ZeroGuard zg_nonce(nonce_raw, sizeof(nonce_raw));
         generate_scalar(nonce_raw);
         const std::string json_secret = buildP2PKSecret(bytes_to_hex(nonce_raw, 32), p2pk);
 
-        uint8_t r[32], B_[33];
+        uint8_t r[32], B_[33];  ZeroGuard zg_r(r, sizeof(r));
         generate_scalar(r);
 
-        // blind the UTF-8 bytes of the JSON string, same as cashu-ts TextEncoder.encode(jsonStr)
-        crypto_err_t err = blind(
-            reinterpret_cast<const uint8_t*>(json_secret.data()),
-            json_secret.size(),
-            r,
-            B_
-        );
-        if (err != CRYPTO_OK)
+        if (blind(reinterpret_cast<const uint8_t*>(json_secret.data()),
+                  json_secret.size(), r, B_) != CRYPTO_OK)
             throw std::runtime_error("blind() failed");
 
         return NativeOutputData(
-            BlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
+            NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
             bytes_to_hex(r, 32),
             json_secret
         );
@@ -252,6 +253,36 @@ namespace margelo::nitro::nutpatch {
         return result;
     }
 
+    NativeOutputData HybridOutputCreator::createSingleDeterministicData(
+        uint64_t amount,
+        const std::shared_ptr<ArrayBuffer>& seed,
+        uint64_t counter,
+        const std::string& keysetId
+    ) {
+        const uint8_t* seed_data = static_cast<const uint8_t*>(seed->data());
+        size_t         seed_len  = seed->size();
+
+        uint8_t secret_bytes[32];  ZeroGuard zg_s(secret_bytes, sizeof(secret_bytes));
+        if (derive_secret(seed_data, seed_len, keysetId.c_str(), counter, secret_bytes) != CRYPTO_OK)
+            throw std::runtime_error("derive_secret failed");
+
+        std::string secret_hex = bytes_to_hex(secret_bytes, 32);
+
+        uint8_t r[32];  ZeroGuard zg_r(r, sizeof(r));
+        if (derive_blinding_factor(seed_data, seed_len, keysetId.c_str(), counter, r) != CRYPTO_OK)
+            throw std::runtime_error("derive_blinding_factor failed");
+
+        uint8_t B_[33];
+        if (blind(reinterpret_cast<const uint8_t*>(secret_hex.data()), secret_hex.size(), r, B_) != CRYPTO_OK)
+            throw std::runtime_error("blind() failed");
+
+        return NativeOutputData(
+            NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
+            bytes_to_hex(r, 32),
+            secret_hex
+        );
+    }
+
     std::vector<NativeOutputData> HybridOutputCreator::createDeterministicData(
         uint64_t amount,
         const std::shared_ptr<ArrayBuffer>& seed,
@@ -259,16 +290,12 @@ namespace margelo::nitro::nutpatch {
         const Keyset& keyset,
         const std::optional<std::vector<uint64_t>>& customSplit
     ) {
-        throw std::runtime_error("not implemented");
-    }
-
-    NativeOutputData HybridOutputCreator::createSingleDeterministicData(
-        uint64_t amount,
-        const std::shared_ptr<ArrayBuffer>& seed,
-        uint64_t counter,
-        const std::string& keysetId
-    ) {
-        throw std::runtime_error("not implemented");
+        const auto amounts = splitAmounts(amount, keyset, customSplit);
+        std::vector<NativeOutputData> result;
+        result.reserve(amounts.size());
+        for (size_t i = 0; i < amounts.size(); i++)
+            result.push_back(createSingleDeterministicData(amounts[i], seed, counter + i, keyset.id));
+        return result;
     }
 
 } // namespace margelo::nitro::nutpatch
