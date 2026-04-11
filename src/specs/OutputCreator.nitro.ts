@@ -55,8 +55,10 @@ export interface NitroP2PKOptions {
 // HybridObject spec
 // ---------------------------------------------------------------------------
 
-export interface OutputCreator
-  extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
+export interface OutputCreator extends HybridObject<{
+  ios: 'c++'
+  android: 'c++'
+}> {
   createP2PKData(
     p2pk: NitroP2PKOptions,
     amount: UInt64,

@@ -8,7 +8,11 @@ import {
   Amount,
   deriveP2BKBlindedPubkeys,
 } from '@cashu/cashu-ts'
-import type { Keyset, NitroP2PKOptions, OutputCreator } from './specs/OutputCreator.nitro'
+import type {
+  Keyset,
+  NitroP2PKOptions,
+  OutputCreator,
+} from './specs/OutputCreator.nitro'
 import { assertValidTagKey, normalizeP2PKOptions } from './p2pk-utils'
 
 function toUInt64(amount: AmountLike): bigint {
@@ -27,9 +31,10 @@ function toKeyset(keyset: HasKeysetKeys): Keyset {
   return { id: keyset.id, keys }
 }
 
-function toNitroP2PKOptions(
-  p2pk: P2PKOptions
-): { nitro: NitroP2PKOptions; ephemeralE?: string } {
+function toNitroP2PKOptions(p2pk: P2PKOptions): {
+  nitro: NitroP2PKOptions
+  ephemeralE?: string
+} {
   const normalized = normalizeP2PKOptions(p2pk)
   let lockKeys = normalized.pubkeys
   let refundKeys = normalized.refundKeys
@@ -66,7 +71,10 @@ function toNitroP2PKOptions(
 }
 
 function uint8ArrayToArrayBuffer(arr: Uint8Array): ArrayBuffer {
-  return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength) as ArrayBuffer
+  return arr.buffer.slice(
+    arr.byteOffset,
+    arr.byteOffset + arr.byteLength
+  ) as ArrayBuffer
 }
 
 function nativeToOutputData(
@@ -89,12 +97,12 @@ function nativeToOutputData(
   )
 }
 
-
 export class NativeOutputCreator implements OutputDataCreator {
   private readonly _native: OutputCreator
 
   constructor() {
-    this._native = NitroModules.createHybridObject<OutputCreator>('OutputCreator')
+    this._native =
+      NitroModules.createHybridObject<OutputCreator>('OutputCreator')
   }
 
   createP2PKData(
@@ -105,7 +113,12 @@ export class NativeOutputCreator implements OutputDataCreator {
   ): OutputData[] {
     const { nitro, ephemeralE } = toNitroP2PKOptions(p2pk)
     return this._native
-      .createP2PKData(nitro, toUInt64(amount), toKeyset(keyset), customSplit?.map(toUInt64))
+      .createP2PKData(
+        nitro,
+        toUInt64(amount),
+        toKeyset(keyset),
+        customSplit?.map(toUInt64)
+      )
       .map((n) => nativeToOutputData(n, ephemeralE))
   }
 
@@ -127,7 +140,11 @@ export class NativeOutputCreator implements OutputDataCreator {
     customSplit?: AmountLike[]
   ): OutputData[] {
     return this._native
-      .createRandomData(toUInt64(amount), toKeyset(keyset), customSplit?.map(toUInt64))
+      .createRandomData(
+        toUInt64(amount),
+        toKeyset(keyset),
+        customSplit?.map(toUInt64)
+      )
       .map((n) => nativeToOutputData(n))
   }
 
