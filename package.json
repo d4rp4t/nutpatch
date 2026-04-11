@@ -1,6 +1,6 @@
 {
   "name": "nutpatch",
-  "version": "0.0.1",
+  "version": "1.0.0-rc.1",
   "description": "nutpatch",
   "main": "lib/index",
   "module": "lib/index",
@@ -13,18 +13,6 @@
       "require": "./lib/index.js",
       "types": "./lib/index.d.ts",
       "react-native": "./src/index.ts"
-    },
-    "./core": {
-      "import": "./lib/crypto/core.js",
-      "require": "./lib/crypto/core.js",
-      "types": "./lib/crypto/core.d.ts",
-      "react-native": "./src/crypto/core.ts"
-    },
-    "./NUT12": {
-      "import": "./lib/crypto/NUT12.js",
-      "require": "./lib/crypto/NUT12.js",
-      "types": "./lib/crypto/NUT12.d.ts",
-      "react-native": "./src/crypto/NUT12.ts"
     }
   },
   "files": [
@@ -66,12 +54,12 @@
     "type": "git",
     "url": "git+https://github.com/mrousavy/nitro.git"
   },
-  "author": "Marc Rousavy <me@mrousavy.com> (https://github.com/mrousavy)",
+  "author": "d4rp4t <d4rp4t@tutanota.com> (https://github.com/d4rp4t)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mrousavy/nitro/issues"
+    "url": "https://github.com/d4rp4t/nutpatch/issues"
   },
-  "homepage": "https://github.com/mrousavy/nitro#readme",
+  "homepage": "https://github.com/d4rp4t/nutpatch#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

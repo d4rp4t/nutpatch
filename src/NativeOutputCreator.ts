@@ -1,14 +1,14 @@
 import { NitroModules } from 'react-native-nitro-modules'
 import {
   OutputData,
+  type OutputDataCreator,
   type AmountLike,
   type HasKeysetKeys,
   type P2PKOptions,
   Amount,
   deriveP2BKBlindedPubkeys,
 } from '@cashu/cashu-ts'
-import type { OutputCreator, Keyset, NitroP2PKOptions } from './specs/OutputCreator.nitro'
-import type { OutputDataCreator } from './index'
+import type { Keyset, NitroP2PKOptions, OutputCreator } from './specs/OutputCreator.nitro'
 import { assertValidTagKey, normalizeP2PKOptions } from './p2pk-utils'
 
 function toUInt64(amount: AmountLike): bigint {
