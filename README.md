@@ -1,9 +1,26 @@
-# nutpatch 
+# nutpatch
 
-[cashu-ts](https://github.com/cashubtc/cashu-ts) is powerful, especially with v8 web engine  
-react native + hermes makes cryptography painfully slow.
+nutpatch is a [Nitro Modules](https://nitro.margelo.com) implementation of performance-critical [cashu-ts](https://github.com/cashubtc/cashu-ts) operations, offloaded to native C++ via JSI.
 
-nutpatch is a C/C++ library that replaces default OutputCreator  in cashu-ts,
-exposed via [nitromodules](https://github.com/mrousavy/nitro)
+## Installation
+
+```sh
+npm install nutpatch
+```
+
+## Usage
+
+Pass `NativeOutputCreator` to `CashuWallet` as `outputDataCreator` — that's it.
+
+```ts
+import { CashuWallet, CashuMint } from '@cashu/cashu-ts'
+import { NativeOutputCreator } from 'nutpatch'
+
+const wallet = new CashuWallet(new CashuMint('https://mint.example.com'), {
+  outputDataCreator: new NativeOutputCreator(),
+})
+```
+
+All output creation (random, deterministic, P2PK) is now handled natively.
 
 peace
