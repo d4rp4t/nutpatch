@@ -22,12 +22,16 @@ static const char HEX_CHARS[] = "0123456789abcdef";
 static secp256k1_context *ctx = NULL;
 
 void crypto_init(void) {
-    ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+    if (ctx == NULL) {
+        ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+    }
 }
 
 void crypto_free(void) {
-    secp256k1_context_destroy(ctx);
-    ctx = NULL;
+    if (ctx != NULL) {
+        secp256k1_context_destroy(ctx);
+        ctx = NULL;
+    }
 }
 
 static void ctcpy(uint8_t *dst, const uint8_t *src, size_t len) {
@@ -81,7 +85,7 @@ crypto_err_t hash_to_curve(const uint8_t *msg, size_t msg_len, uint8_t *out33) {
         sha256_Final(&h, msg_hash);
     }
 
-    for (uint32_t i = 0; i < UINT32_MAX; i++) {
+    for (uint32_t i = 0; i < (1u << 16); i++) {
         uint8_t point_bytes[33];
         point_bytes[0] = 0x02;
 
@@ -407,9 +411,7 @@ static void write_be64(uint8_t *out, uint64_t v) {
     out[7] = (uint8_t)(v      );
 }
 
-// ---------------------------------------------------------------------------
 // v2: HMAC-SHA256 KDF  (keyset ID prefix "01")
-// ---------------------------------------------------------------------------
 
 static const uint8_t SECP256K1_N[32] = {
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -450,13 +452,14 @@ static crypto_err_t derive_v2(
     hmac_sha256(seed, (uint32_t)seed_len, data, (uint32_t)pos, out32);
     memzero(data, sizeof(data));
 
-    // Reduce mod n if needed (cashu-ts: o >= n ? o - n : o)
-    if (memcmp(out32, SECP256K1_N, 32) >= 0)
-        bytes32_sub(out32, out32, SECP256K1_N);
-
-    // zero scalar is invalid
-    uint8_t zero[32] = {0};
-    if (memcmp(out32, zero, 32) == 0) return CRYPTO_ERR_INVALID_SCALAR;
+    // raw HMAC digest for secret (suffix 0x00), mod-N reduced.
+    // non-zero scalar check for blinding factor (suffix 0x01).
+    if (suffix == 0x01) {
+        if (memcmp(out32, SECP256K1_N, 32) >= 0)
+            bytes32_sub(out32, out32, SECP256K1_N);
+        uint8_t zero[32] = {0};
+        if (memcmp(out32, zero, 32) == 0) return CRYPTO_ERR_INVALID_SCALAR;
+    }
 
     return CRYPTO_OK;
 }
@@ -521,9 +524,11 @@ static crypto_err_t derive_v1(
     const char *keyset_id, uint64_t counter,
     uint8_t suffix_idx, uint8_t *out32)
 {
+    // BIP32 hardened indices are limited to [0, 2^31-1]. throw on overflow
+    if (counter > 0x7FFFFFFFu) return CRYPTO_ERR_INVALID_SCALAR;
+
     uint32_t kid_int = keyset_id_to_bip32_int(keyset_id);
-    // BIP32 hardened indices are limited to [0, 2^31-1]
-    uint32_t ctr_idx = (uint32_t)(counter & 0x7FFFFFFFu);
+    uint32_t ctr_idx = (uint32_t)counter;
 
     bip32_node node, tmp;
     crypto_err_t ret = CRYPTO_ERR_INVALID_SCALAR;

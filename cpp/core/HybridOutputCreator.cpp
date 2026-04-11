@@ -19,7 +19,13 @@ extern "C" {
 
 namespace margelo::nitro::nutpatch {
 
+    HybridOutputCreator::HybridOutputCreator() : HybridObject(TAG) {
+        crypto_init();
+    }
+
     static constexpr char HEX[] = "0123456789abcdef";
+    // matches cashu-ts MAX_SECRET_LENGTH (Nutshell default mint_max_secret_length).
+    static constexpr size_t MAX_SECRET_LENGTH = 1024;
 
     static std::string bytes_to_hex(const uint8_t* data, size_t len) {
         std::string result(len * 2, '\0');
@@ -28,6 +34,22 @@ namespace margelo::nitro::nutpatch {
             result[i * 2 + 1] = HEX[data[i] & 0xF];
         }
         return result;
+    }
+
+    static size_t utf8_code_points(const std::string& s) {
+        size_t count = 0;
+        for (size_t i = 0; i < s.size(); ) {
+            const unsigned char c = static_cast<unsigned char>(s[i]);
+            size_t step;
+            if ((c & 0x80) == 0x00) step = 1;
+            else if ((c & 0xE0) == 0xC0) step = 2;
+            else if ((c & 0xF0) == 0xE0) step = 3;
+            else if ((c & 0xF8) == 0xF0) step = 4;
+            else step = 1; // invalid lead byte — count as one
+            i += step;
+            count++;
+        }
+        return count;
     }
 
     // RAII helper: zeros a memory region when it goes out of scope (including on throw)
@@ -69,11 +91,14 @@ namespace margelo::nitro::nutpatch {
             uint64_t customSum = 0;
             for (uint64_t v : customSplit.value()) {
                 if (v == 0) continue;
+                // cashu-ts rejects custom amounts not present as keyset keys.
+                if (keyset.keys.find(std::to_string(v)) == keyset.keys.end())
+                    throw std::runtime_error("Provided amount preferences do not match the amounts of the mint keyset.");
                 result.push_back(static_cast<uint32_t>(v));
                 customSum += v;
             }
             if (customSum > amount)
-                throw std::runtime_error("Split exceeds total amount");
+                throw std::runtime_error("Split is greater than total amount");
             if (customSum == amount)
                 return result;
             amount -= customSum;
@@ -81,7 +106,7 @@ namespace margelo::nitro::nutpatch {
 
         const auto denoms = parseDenominations(keyset);
         if (denoms.empty())
-            throw std::runtime_error("Keyset has no keys");
+            throw std::runtime_error("Cannot split amount, keyset is inactive or contains no keys");
 
         for (const uint32_t denom : denoms) {
             uint64_t count = amount / denom;
@@ -149,10 +174,12 @@ namespace margelo::nitro::nutpatch {
             first = false;
         };
 
-        // locktime — only if valid integer >= 0
+        // locktime — only if valid non-negative integer
         if (opts.locktime.has_value()) {
-            int64_t lt = static_cast<int64_t>(opts.locktime.value());
-            if (lt >= 0)
+            double raw = opts.locktime.value();
+            int64_t lt = static_cast<int64_t>(raw);
+            constexpr int64_t JS_SAFE_INT_MAX = (1LL << 53) - 1;
+            if (raw >= 0.0 && static_cast<double>(lt) == raw && lt <= JS_SAFE_INT_MAX)
                 append_tag("[\"locktime\",\"" + std::to_string(lt) + "\"]");
         }
 
@@ -240,6 +267,11 @@ namespace margelo::nitro::nutpatch {
         uint8_t nonce_raw[32];  ZeroGuard zg_nonce(nonce_raw, sizeof(nonce_raw));
         generate_scalar(nonce_raw);
         const std::string json_secret = buildP2PKSecret(bytes_to_hex(nonce_raw, 32), p2pk);
+
+        const size_t char_count = utf8_code_points(json_secret);
+        if (char_count > MAX_SECRET_LENGTH)
+            throw std::runtime_error("Secret too long (" + std::to_string(char_count) +
+                                     " characters), maximum is " + std::to_string(MAX_SECRET_LENGTH));
 
         uint8_t r[32], B_[33];  ZeroGuard zg_r(r, sizeof(r));
         generate_scalar(r);

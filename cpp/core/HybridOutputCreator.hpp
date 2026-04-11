@@ -15,7 +15,7 @@ using namespace margelo::nitro;
 
 class HybridOutputCreator : public HybridOutputCreatorSpec {
 public:
-    HybridOutputCreator() : HybridObject(TAG) {}
+    HybridOutputCreator();
     ~HybridOutputCreator() = default;
 
 public:
