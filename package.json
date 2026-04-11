@@ -51,8 +51,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf android/build node_modules/**/android/build lib",
-    "lint": "eslint \"**/*.{js,ts,tsx}\" --fix",
-    "lint-ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint \"**/*.{js,ts,tsx}\" --fix",
+    "lint-ci": "ESLINT_USE_FLAT_CONFIG=false eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
     "typescript": "tsc",
     "specs": "tsc --noEmit false && nitrogen --logLevel=\"debug\"",
     "test": "vitest run",
