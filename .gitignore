@@ -3,3 +3,5 @@
 lib/
 .DS_Store
 tsconfig.tsbuildinfo
+android/.cxx/
+android/build/

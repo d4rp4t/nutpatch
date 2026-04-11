@@ -9,7 +9,9 @@
 #include <stdexcept>
 
 #include "crypto.h"
+extern "C" {
 #include "../vendor/trezor/memzero.h"
+}
 #include "HybridOutputCreator.hpp"
 #include "NativeOutputData.hpp"
 #include "NitroP2PKOptions.hpp"

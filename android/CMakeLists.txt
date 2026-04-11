@@ -43,8 +43,6 @@ target_include_directories(${PACKAGE_NAME} PRIVATE
   ../cpp/core
   ../cpp/vendor/secp256k1/include
   ../cpp/vendor/trezor
-  ../node_modules/react-native-nitro-modules/cpp/core
-  ../node_modules/react-native-nitro-modules/cpp
 )
 
 find_library(LOG_LIB log)
