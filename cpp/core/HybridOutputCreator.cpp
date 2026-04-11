@@ -135,7 +135,9 @@ namespace margelo::nitro::nutpatch {
         const std::string& nonce_hex,
         const NitroP2PKOptions& opts
     ) {
-        const std::string& data = opts.pubkeys[0];
+        const bool is_htlc = opts.hashlock.has_value() && !opts.hashlock.value().empty();
+        const std::string& kind = is_htlc ? "HTLC" : "P2PK";
+        const std::string& data = is_htlc ? opts.hashlock.value() : opts.pubkeys[0];
 
         std::string tags = "[";
         bool first = true;
@@ -148,15 +150,14 @@ namespace margelo::nitro::nutpatch {
         // locktime — only if valid integer >= 0
         if (opts.locktime.has_value()) {
             int64_t lt = static_cast<int64_t>(opts.locktime.value());
-            if (lt >= 0) {
+            if (lt >= 0)
                 append_tag("[\"locktime\",\"" + std::to_string(lt) + "\"]");
-            }
         }
 
-        // additional pubkeys (all pubkeys after first)
-        if (opts.pubkeys.size() > 1) {
+        const size_t pubkeys_start = is_htlc ? 0 : 1;
+        if (opts.pubkeys.size() > pubkeys_start) {
             std::string tag = "[\"pubkeys\"";
-            for (size_t i = 1; i < opts.pubkeys.size(); i++) {
+            for (size_t i = pubkeys_start; i < opts.pubkeys.size(); i++) {
                 tag += ",\"";
                 tag += opts.pubkeys[i];
                 tag += '"';
@@ -195,15 +196,28 @@ namespace margelo::nitro::nutpatch {
         if (opts.sigFlag.has_value() && opts.sigFlag.value() == "SIG_ALL")
             append_tag("[\"sigflag\",\"SIG_ALL\"]");
 
-        // hashlock
-        if (opts.hashlock.has_value() && !opts.hashlock.value().empty())
-            append_tag("[\"hashlock\",\"" + opts.hashlock.value() + "\"]");
+        // additionalTags appended at end
+        if (opts.additionalTags.has_value()) {
+            for (const auto& tag_arr : opts.additionalTags.value()) {
+                if (tag_arr.empty()) continue;
+                std::string tag = "[\"" + tag_arr[0] + "\"";
+                for (size_t i = 1; i < tag_arr.size(); i++) {
+                    tag += ",\"";
+                    tag += tag_arr[i];
+                    tag += '"';
+                }
+                tag += ']';
+                append_tag(tag);
+            }
+        }
 
         tags += ']';
 
         std::string secret;
         secret.reserve(64 + data.size() + tags.size());
-        secret += "[\"P2PK\",{\"nonce\":\"";
+        secret += "[\"";
+        secret += kind;
+        secret += "\",{\"nonce\":\"";
         secret += nonce_hex;
         secret += "\",\"data\":\"";
         secret += data;
