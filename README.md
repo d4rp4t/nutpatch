@@ -13,10 +13,10 @@ npm install nutpatch
 Pass `NativeOutputCreator` to `CashuWallet` as `outputDataCreator` — that's it.
 
 ```ts
-import { CashuWallet, CashuMint } from '@cashu/cashu-ts'
+import { Wallet } from '@cashu/cashu-ts'
 import { NativeOutputCreator } from 'nutpatch'
 
-const wallet = new CashuWallet(new CashuMint('https://mint.example.com'), {
+const wallet = new Wallet('https://mint.example.com', {
   outputDataCreator: new NativeOutputCreator(),
 })
 ```
