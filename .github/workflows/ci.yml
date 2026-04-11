@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  js:
+    name: TypeScript + Lint + Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint-ci
+      - name: Unit tests (vitest)
+        run: npm test
+
+  nitrogen:
+    name: Nitrogen codegen check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Regenerate bindings
+        run: npm run specs
+      - name: Verify no drift
+        run: |
+          if ! git diff --quiet nitrogen/; then
+            echo "::error::Nitrogen output is out of date. Run 'npm run specs' and commit."
+            git diff --stat nitrogen/
+            exit 1
+          fi
+
+  cpp:
+    name: C++ unit tests (gtest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build nutpatch_tests
+        run: cmake --build build --target nutpatch_tests --parallel
+      - name: Run crypto tests
+        working-directory: build
+        run: ctest --output-on-failure

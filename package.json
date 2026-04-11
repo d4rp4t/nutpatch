@@ -54,7 +54,9 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "lint-ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
     "typescript": "tsc",
-    "specs": "tsc --noEmit false && nitrogen --logLevel=\"debug\""
+    "specs": "tsc --noEmit false && nitrogen --logLevel=\"debug\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "react-native",
@@ -74,7 +76,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@cashu/cashu-ts": "^3.6.1",
+    "@cashu/cashu-ts": "^4.0.0-rc4",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@react-native/eslint-config": "0.83.0",
@@ -86,14 +88,16 @@
     "prettier": "^3.3.3",
     "react": "19.2.0",
     "react-native": "0.83.0",
-    "react-native-nitro-modules": "*"
+    "react-native-nitro-modules": "*",
+    "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "typescript": "^5.8.3",
+    "@cashu/cashu-ts": "^4.0.0-rc4",
     "@noble/curves": ">=1.0.0",
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "*"
+    "react-native-nitro-modules": "*",
+    "typescript": "^5.8.3"
   },
   "eslintConfig": {
     "root": true,
