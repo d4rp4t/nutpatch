@@ -158,13 +158,39 @@ namespace margelo::nitro::nutpatch {
     }
 
 
+    static std::string escape_json_string(const std::string& s) {
+        std::string out;
+        out.reserve(s.size() + 4);
+        for (char c : s) {
+            switch (c) {
+                case '"': out += "\\\""; break;
+                case '\\': out += "\\\\"; break;
+                case '\b': out += "\\b"; break;
+                case '\f': out += "\\f"; break;
+                case '\n': out += "\\n"; break;
+                case '\r': out += "\\r"; break;
+                case '\t': out += "\\t"; break;
+                default:
+                    if (static_cast<unsigned char>(c) <= 0x1f) {
+                        char buf[8];
+                        snprintf(buf, sizeof(buf), "\\u%04x", c);
+                        out += buf;
+                    } else {
+                        out += c;
+                    }
+                    break;
+            }
+        }
+        return out;
+    }
+
     static std::string buildP2PKSecret(
         const std::string& nonce_hex,
         const NitroP2PKOptions& opts
     ) {
         const bool is_htlc = opts.hashlock.has_value() && !opts.hashlock.value().empty();
         const std::string& kind = is_htlc ? "HTLC" : "P2PK";
-        const std::string& data = is_htlc ? opts.hashlock.value() : opts.pubkeys[0];
+        const std::string& data = is_htlc ? escape_json_string(opts.hashlock.value()) : escape_json_string(opts.pubkeys[0]);
 
         std::string tags = "[";
         bool first = true;
@@ -188,7 +214,7 @@ namespace margelo::nitro::nutpatch {
             std::string tag = "[\"pubkeys\"";
             for (size_t i = pubkeys_start; i < opts.pubkeys.size(); i++) {
                 tag += ",\"";
-                tag += opts.pubkeys[i];
+                tag += escape_json_string(opts.pubkeys[i]);
                 tag += '"';
             }
             tag += ']';
@@ -207,7 +233,7 @@ namespace margelo::nitro::nutpatch {
             std::string tag = "[\"refund\"";
             for (const auto& key : opts.refundKeys.value()) {
                 tag += ",\"";
-                tag += key;
+                tag += escape_json_string(key);
                 tag += '"';
             }
             tag += ']';
@@ -229,10 +255,10 @@ namespace margelo::nitro::nutpatch {
         if (opts.additionalTags.has_value()) {
             for (const auto& tag_arr : opts.additionalTags.value()) {
                 if (tag_arr.empty()) continue;
-                std::string tag = "[\"" + tag_arr[0] + "\"";
+                std::string tag = "[\"" + escape_json_string(tag_arr[0]) + "\"";
                 for (size_t i = 1; i < tag_arr.size(); i++) {
                     tag += ",\"";
-                    tag += tag_arr[i];
+                    tag += escape_json_string(tag_arr[i]);
                     tag += '"';
                 }
                 tag += ']';
