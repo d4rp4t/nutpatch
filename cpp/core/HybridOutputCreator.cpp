@@ -46,6 +46,13 @@ namespace margelo::nitro::nutpatch {
             else if ((c & 0xF0) == 0xE0) step = 3;
             else if ((c & 0xF8) == 0xF0) step = 4;
             else step = 1; // invalid lead byte — count as one
+            
+            // Check if string abruptly ends with incomplete sequence
+            if (i + step > s.size()) {
+                count += s.size() - i; // Count remaining bytes as individual characters
+                break;
+            }
+            
             i += step;
             count++;
         }
