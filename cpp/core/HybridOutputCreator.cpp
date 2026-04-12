@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <mutex>
 
 #include "crypto.h"
 extern "C" {
@@ -19,8 +20,12 @@ extern "C" {
 
 namespace margelo::nitro::nutpatch {
 
+    static std::once_flag crypto_init_flag;
+
     HybridOutputCreator::HybridOutputCreator() : HybridObject(TAG) {
-        crypto_init();
+        std::call_once(crypto_init_flag, []() {
+            crypto_init();
+        });
     }
 
     static constexpr char HEX[] = "0123456789abcdef";
