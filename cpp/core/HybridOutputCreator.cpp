@@ -100,6 +100,8 @@ namespace margelo::nitro::nutpatch {
                 if (keyset.keys.find(std::to_string(v)) == keyset.keys.end())
                     throw std::runtime_error("Provided amount preferences do not match the amounts of the mint keyset.");
                 result.push_back(static_cast<uint32_t>(v));
+                if (UINT64_MAX - customSum < v)
+                    throw std::runtime_error("Split sum integer overflow");
                 customSum += v;
             }
             if (customSum > amount)
