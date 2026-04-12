@@ -353,10 +353,11 @@ static int hex_nibble(char c) {
     return -1;
 }
 
-static int hex_decode_str(const char *hex, uint8_t *out, size_t *out_len) {
+static int hex_decode_str(const char *hex, uint8_t *out, size_t out_max_len, size_t *out_len) {
     size_t hex_len = strlen(hex);
     if (hex_len % 2 != 0) return -1;
     size_t n = hex_len / 2;
+    if (n > out_max_len) return -1;
     for (size_t i = 0; i < n; i++) {
         int hi = hex_nibble(hex[i * 2]);
         int lo = hex_nibble(hex[i * 2 + 1]);
@@ -388,7 +389,7 @@ static uint32_t keyset_id_to_bip32_int(const char *keyset_id) {
     size_t len = strlen(keyset_id);
     uint8_t buf[64];
     size_t buf_len;
-    if (keyset_id_is_hex(keyset_id) && hex_decode_str(keyset_id, buf, &buf_len) == 0)
+    if (keyset_id_is_hex(keyset_id) && hex_decode_str(keyset_id, buf, sizeof(buf), &buf_len) == 0)
         return bytes_mod_2_31_minus_1(buf, buf_len);
     return bytes_mod_2_31_minus_1((const uint8_t *)keyset_id, len);
 }
@@ -438,7 +439,7 @@ static crypto_err_t derive_v2(
     static const size_t LABEL_LEN = sizeof(LABEL) - 1;  // 21, excludes null terminator
     uint8_t kid_bytes[64];
     size_t kid_len;
-    if (hex_decode_str(keyset_id, kid_bytes, &kid_len) != 0)
+    if (hex_decode_str(keyset_id, kid_bytes, sizeof(kid_bytes), &kid_len) != 0)
         return CRYPTO_ERR_INVALID_SCALAR;
 
     // data = LABEL || keyset_id_bytes || counter_be64 || suffix_byte
