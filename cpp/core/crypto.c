@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 static const unsigned char DOMAIN_SEPARATOR[] = "Secp256k1_HashToCurve_Cashu_";
 #define DOMAIN_SEPARATOR_LEN (sizeof(DOMAIN_SEPARATOR) - 1)
@@ -20,11 +21,14 @@ static const unsigned char DOMAIN_SEPARATOR[] = "Secp256k1_HashToCurve_Cashu_";
 static const char HEX_CHARS[] = "0123456789abcdef";
 
 static secp256k1_context *ctx = NULL;
+static pthread_once_t ctx_once = PTHREAD_ONCE_INIT;
+
+static void init_ctx_once(void) {
+    ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+}
 
 void crypto_init(void) {
-    if (ctx == NULL) {
-        ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-    }
+    pthread_once(&ctx_once, init_ctx_once);
 }
 
 void crypto_free(void) {
