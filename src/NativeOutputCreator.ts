@@ -18,7 +18,12 @@ import { assertValidTagKey, normalizeP2PKOptions } from './p2pk-utils'
 function toUInt64(amount: AmountLike): bigint {
   if (amount instanceof Amount) return amount.toBigInt()
   if (typeof amount === 'bigint') return amount
-  if (typeof amount === 'number') return BigInt(amount)
+  if (typeof amount === 'number') {
+    if (!Number.isSafeInteger(amount)) {
+      throw new Error(`Amount is not a safe integer: ${amount}`)
+    }
+    return BigInt(amount)
+  }
   if (typeof amount === 'string') return BigInt(amount)
   throw new Error('Amount is not AmountLike')
 }
