@@ -20,6 +20,7 @@ typedef enum {
     CRYPTO_ERR_SCHNORR_SIGN,
     CRYPTO_ERR_SCHNORR_VERIFY,
     CRYPTO_ERR_RANDOM,
+    CRYPTO_ERR_NULL_PTR,
 } crypto_err_t;
 
 // Context
@@ -64,6 +65,11 @@ crypto_err_t derive_blinding_factor(
     const char    *keyset_id,
     uint64_t       counter,
     uint8_t       *out32);
+
+crypto_err_t derive_p2bk_blinded_pubkeys(
+    const uint8_t *pubkeys_33, size_t num_pubkeys,
+    const uint8_t *e_in32,
+    uint8_t *out_blinded_33, uint8_t E_out33[33]);
 
 
 #ifdef __cplusplus

@@ -44,10 +44,11 @@ namespace margelo::nitro::nutpatch {
     NativeBlindedMessage blindedMessage     SWIFT_PRIVATE;
     std::string blindingFactor     SWIFT_PRIVATE;
     std::string secret     SWIFT_PRIVATE;
+    std::string ephemeralE     SWIFT_PRIVATE;
 
   public:
     NativeOutputData() = default;
-    explicit NativeOutputData(NativeBlindedMessage blindedMessage, std::string blindingFactor, std::string secret): blindedMessage(blindedMessage), blindingFactor(blindingFactor), secret(secret) {}
+    explicit NativeOutputData(NativeBlindedMessage blindedMessage, std::string blindingFactor, std::string secret, std::string ephemeralE): blindedMessage(blindedMessage), blindingFactor(blindingFactor), secret(secret), ephemeralE(ephemeralE) {}
 
   public:
     friend bool operator==(const NativeOutputData& lhs, const NativeOutputData& rhs) = default;
@@ -65,7 +66,8 @@ namespace margelo::nitro {
       return margelo::nitro::nutpatch::NativeOutputData(
         JSIConverter<margelo::nitro::nutpatch::NativeBlindedMessage>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "blindedMessage"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "blindingFactor"))),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "secret")))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "secret"))),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ephemeralE")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nutpatch::NativeOutputData& arg) {
@@ -73,6 +75,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "blindedMessage"), JSIConverter<margelo::nitro::nutpatch::NativeBlindedMessage>::toJSI(runtime, arg.blindedMessage));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "blindingFactor"), JSIConverter<std::string>::toJSI(runtime, arg.blindingFactor));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "secret"), JSIConverter<std::string>::toJSI(runtime, arg.secret));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "ephemeralE"), JSIConverter<std::string>::toJSI(runtime, arg.ephemeralE));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -86,6 +89,7 @@ namespace margelo::nitro {
       if (!JSIConverter<margelo::nitro::nutpatch::NativeBlindedMessage>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "blindedMessage")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "blindingFactor")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "secret")))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ephemeralE")))) return false;
       return true;
     }
   };

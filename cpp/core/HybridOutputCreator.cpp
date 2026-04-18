@@ -154,7 +154,8 @@ namespace margelo::nitro::nutpatch {
         return NativeOutputData(
             NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
             bytes_to_hex(r, 32),
-            secret_hex
+            secret_hex,
+            ""
         );
     }
 
@@ -296,10 +297,82 @@ namespace margelo::nitro::nutpatch {
         return secret;
     }
 
-    NativeOutputData HybridOutputCreator::createSingleP2PKData(
+    static int hex_nibble(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    }
+
+    static bool hex_to_fixed_bytes(const std::string& hex, uint8_t* out, size_t expected_bytes) {
+        if (hex.size() != expected_bytes * 2) return false;
+        for (size_t i = 0; i < expected_bytes; i++) {
+            int hi = hex_nibble(hex[i * 2]);
+            int lo = hex_nibble(hex[i * 2 + 1]);
+            if (hi < 0 || lo < 0) return false;
+            out[i] = static_cast<uint8_t>((hi << 4) | lo);
+        }
+        return true;
+    }
+
+    // If blindKeys is set, blinds opts.pubkeys (and refundKeys) in place,
+    // clears the flag to prevent double-blinding, and returns hex(E).
+    // Returns empty string when blinding is not requested.
+    static std::string apply_p2bk_blinding(NitroP2PKOptions& opts) {
+        if (!opts.blindKeys.has_value() || !opts.blindKeys.value()) return "";
+
+        const size_t numLock   = opts.pubkeys.size();
+        const size_t numRefund = opts.refundKeys.has_value()
+                                 ? opts.refundKeys.value().size() : 0;
+        const size_t total = numLock + numRefund;
+        opts.blindKeys = false;
+        if (total == 0) return "";
+        if (total > 256)
+            throw std::runtime_error("P2BK: at most 256 pubkeys supported");
+
+        std::vector<uint8_t> flat(total * 33);
+        for (size_t i = 0; i < numLock; i++) {
+            if (!hex_to_fixed_bytes(opts.pubkeys[i], flat.data() + i * 33, 33))
+                throw std::runtime_error("P2BK: pubkeys[" + std::to_string(i) +
+                                         "] must be a 66-char hex string");
+        }
+        if (numRefund > 0) {
+            const auto& rk = opts.refundKeys.value();
+            for (size_t i = 0; i < numRefund; i++) {
+                if (!hex_to_fixed_bytes(rk[i], flat.data() + (numLock + i) * 33, 33))
+                    throw std::runtime_error("P2BK: refundKeys[" + std::to_string(i) +
+                                             "] must be a 66-char hex string");
+            }
+        }
+
+        std::vector<uint8_t> blinded_flat(total * 33);
+        uint8_t E_out[33];
+
+        crypto_err_t err = derive_p2bk_blinded_pubkeys(
+            flat.data(), total, nullptr, blinded_flat.data(), E_out);
+        if (err != CRYPTO_OK) {
+            memzero(blinded_flat.data(), blinded_flat.size());
+            memzero(E_out, sizeof(E_out));
+            throw std::runtime_error("derive_p2bk_blinded_pubkeys failed");
+        }
+
+        for (size_t i = 0; i < numLock; i++)
+            opts.pubkeys[i] = bytes_to_hex(blinded_flat.data() + i * 33, 33);
+        if (numRefund > 0) {
+            auto& rk = opts.refundKeys.value();
+            for (size_t i = 0; i < numRefund; i++)
+                rk[i] = bytes_to_hex(blinded_flat.data() + (numLock + i) * 33, 33);
+        }
+        return bytes_to_hex(E_out, 33);
+    }
+
+    // Core P2PK output builder. Caller must pass a fully-prepared `p2pk`
+    // (already blinded if applicable) and the matching `ephemeralE`.
+    static NativeOutputData buildP2PKOutput(
         const NitroP2PKOptions& p2pk,
         uint64_t amount,
-        const std::string& keysetId
+        const std::string& keysetId,
+        const std::string& ephemeralE
     ) {
         if (p2pk.pubkeys.empty())
             throw std::runtime_error("P2PK requires at least one pubkey");
@@ -323,8 +396,19 @@ namespace margelo::nitro::nutpatch {
         return NativeOutputData(
             NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
             bytes_to_hex(r, 32),
-            json_secret
+            json_secret,
+            ephemeralE
         );
+    }
+
+    NativeOutputData HybridOutputCreator::createSingleP2PKData(
+        const NitroP2PKOptions& p2pk,
+        uint64_t amount,
+        const std::string& keysetId
+    ) {
+        NitroP2PKOptions prepared = p2pk;
+        const std::string ephemeralE = apply_p2bk_blinding(prepared);
+        return buildP2PKOutput(prepared, amount, keysetId, ephemeralE);
     }
 
     std::vector<NativeOutputData> HybridOutputCreator::createP2PKData(
@@ -333,11 +417,15 @@ namespace margelo::nitro::nutpatch {
         const Keyset& keyset,
         const std::optional<std::vector<uint64_t>>& customSplit
     ) {
+        // Blind ONCE so every output in the batch shares the same ephemeral E.
+        NitroP2PKOptions prepared = p2pk;
+        const std::string ephemeralE = apply_p2bk_blinding(prepared);
+
         const auto amounts = splitAmounts(amount, keyset, customSplit);
         std::vector<NativeOutputData> result;
         result.reserve(amounts.size());
         for (uint32_t a : amounts)
-            result.push_back(createSingleP2PKData(p2pk, a, keyset.id));
+            result.push_back(buildP2PKOutput(prepared, a, keyset.id, ephemeralE));
         return result;
     }
 
@@ -367,7 +455,8 @@ namespace margelo::nitro::nutpatch {
         return NativeOutputData(
             NativeBlindedMessage(amount, bytes_to_hex(B_, 33), keysetId),
             bytes_to_hex(r, 32),
-            secret_hex
+            secret_hex,
+            ""
         );
     }
 

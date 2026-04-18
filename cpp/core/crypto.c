@@ -17,6 +17,10 @@
 static const unsigned char DOMAIN_SEPARATOR[] = "Secp256k1_HashToCurve_Cashu_";
 #define DOMAIN_SEPARATOR_LEN (sizeof(DOMAIN_SEPARATOR) - 1)
 
+
+static const unsigned char P2BK_PREFIX[] = "Cashu_P2BK_v1";
+#define P2BK_PREFIX_LEN (sizeof(P2BK_PREFIX) - 1)
+
 static const char HEX_CHARS[] = "0123456789abcdef";
 
 static secp256k1_context *ctx = NULL;
@@ -575,4 +579,146 @@ crypto_err_t derive_blinding_factor(
         keyset_id[0] == '0' && keyset_id[1] == '1')
         return derive_v2(seed, seed_len, keyset_id, counter, 0x01, out32);
     return derive_v1(seed, seed_len, keyset_id, counter, 1, out32);
+}
+
+
+static crypto_err_t compute_zx(const uint8_t *e32, const secp256k1_pubkey *P,
+                               uint8_t *out32) {
+    if (e32 == NULL || P == NULL || out32 == NULL) return CRYPTO_ERR_NULL_PTR;
+
+    crypto_err_t ret = CRYPTO_ERR_INVALID_POINT;
+    secp256k1_pubkey eP;
+    uint8_t tmp[65];
+    size_t tmp_len = sizeof(tmp);
+
+    ctcpy((uint8_t*)&eP, (const uint8_t*)P, sizeof(eP));
+    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &eP, e32)) {
+        ret = CRYPTO_ERR_INVALID_SCALAR;
+        goto done;
+    }
+    if (!secp256k1_ec_pubkey_serialize(ctx, tmp, &tmp_len, &eP,
+                                       SECP256K1_EC_UNCOMPRESSED))
+        goto done;
+    if (tmp_len != 65) goto done;
+    memcpy(out32, tmp + 1, 32);
+    ret = CRYPTO_OK;
+
+done:
+    memzero(&eP, sizeof(eP));
+    memzero(tmp, sizeof(tmp));
+    return ret;
+}
+
+// the astronomically rare case r == 0 or r >= n. i is pre-validated to fit
+// in a byte by the caller.
+static crypto_err_t compute_ri(const uint8_t Zx[32], size_t i, uint8_t *out32) {
+    if (Zx == NULL || out32 == NULL) return CRYPTO_ERR_NULL_PTR;
+    if (i > 255) return CRYPTO_ERR_INVALID_SCALAR;
+
+    uint8_t i_byte = (uint8_t)i;
+    SHA256_CTX h;
+
+    sha256_Init(&h);
+    sha256_Update(&h, P2BK_PREFIX, P2BK_PREFIX_LEN);
+    sha256_Update(&h, Zx, 32);
+    sha256_Update(&h, &i_byte, 1);
+    sha256_Final(&h, out32);
+    if (secp256k1_ec_seckey_verify(ctx, out32)) return CRYPTO_OK;
+
+    uint8_t extra = 0xff;
+    sha256_Init(&h);
+    sha256_Update(&h, P2BK_PREFIX, P2BK_PREFIX_LEN);
+    sha256_Update(&h, Zx, 32);
+    sha256_Update(&h, &i_byte, 1);
+    sha256_Update(&h, &extra, 1);
+    sha256_Final(&h, out32);
+    memzero(&h, sizeof(h));
+    if (secp256k1_ec_seckey_verify(ctx, out32)) return CRYPTO_OK;
+
+    memzero(out32, 32);
+    return CRYPTO_ERR_INVALID_SCALAR;
+}
+
+crypto_err_t derive_p2bk_blinded_pubkeys(
+    const uint8_t *pubkeys_33, size_t num_pubkeys,
+    const uint8_t *e_in32,
+    uint8_t *out_blinded_33, uint8_t E_out33[33])
+{
+    if (pubkeys_33 == NULL || out_blinded_33 == NULL || E_out33 == NULL)
+        return CRYPTO_ERR_NULL_PTR;
+    // i is packed into a single byte — slot index must fit in [0, 255].
+    if (num_pubkeys > 256) return CRYPTO_ERR_INVALID_SCALAR;
+
+    memzero(E_out33, 33);
+    if (num_pubkeys == 0) return CRYPTO_OK;
+
+    uint8_t e[32]  = {0};
+    uint8_t Zx[32] = {0};
+    uint8_t r[32]  = {0};
+    secp256k1_pubkey E, P, rG, P_;
+    memzero(&E,  sizeof(E));
+    memzero(&P,  sizeof(P));
+    memzero(&rG, sizeof(rG));
+    memzero(&P_, sizeof(P_));
+    crypto_err_t ret;
+
+    if (e_in32) {
+        ctcpy(e, e_in32, 32);
+        if (!secp256k1_ec_seckey_verify(ctx, e)) {
+            ret = CRYPTO_ERR_INVALID_SCALAR;
+            goto done;
+        }
+    } else {
+        ret = seckey_generate(e);
+        if (ret != CRYPTO_OK) goto done;
+    }
+
+    // E = e*G
+    if (!secp256k1_ec_pubkey_create(ctx, &E, e)) {
+        ret = CRYPTO_ERR_INVALID_SCALAR;
+        goto done;
+    }
+    ret = pubkey_serialize(&E, E_out33);
+    if (ret != CRYPTO_OK) goto done;
+
+    for (size_t i = 0; i < num_pubkeys; i++) {
+        ret = pubkey_parse(pubkeys_33 + i * 33, &P);
+        if (ret != CRYPTO_OK) goto done;
+
+        ret = compute_zx(e, &P, Zx);
+        if (ret != CRYPTO_OK) goto done;
+
+        ret = compute_ri(Zx, i, r);
+        if (ret != CRYPTO_OK) goto done;
+
+        // P_ = P + r*G; combine returns 0 iff the sum is the point at infinity.
+        if (!secp256k1_ec_pubkey_create(ctx, &rG, r)) {
+            ret = CRYPTO_ERR_INVALID_SCALAR;
+            goto done;
+        }
+
+        const secp256k1_pubkey *pts[2] = { &P, &rG };
+        if (!secp256k1_ec_pubkey_combine(ctx, &P_, pts, 2)) {
+            ret = CRYPTO_ERR_INVALID_POINT;
+            goto done;
+        }
+        ret = pubkey_serialize(&P_, out_blinded_33 + i * 33);
+        if (ret != CRYPTO_OK) goto done;
+    }
+
+    ret = CRYPTO_OK;
+
+done:
+    memzero(e,   sizeof(e));
+    memzero(r,   sizeof(r));
+    memzero(Zx,  sizeof(Zx));
+    memzero(&E,  sizeof(E));
+    memzero(&P,  sizeof(P));
+    memzero(&rG, sizeof(rG));
+    memzero(&P_, sizeof(P_));
+    if (ret != CRYPTO_OK) {
+        memzero(E_out33, 33);
+        memzero(out_blinded_33, num_pubkeys * 33);
+    }
+    return ret;
 }

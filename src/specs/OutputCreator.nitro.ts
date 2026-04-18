@@ -22,6 +22,11 @@ export interface NativeOutputData {
   blindingFactor: string
   /** Hex-encoded secret bytes */
   secret: string
+  /**
+   * Hex-encoded compressed ephemeral pubkey E = e*G when P2BK blinding
+   * was applied, empty string otherwise.
+   */
+  ephemeralE: string
 }
 
 /**

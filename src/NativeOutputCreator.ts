@@ -6,7 +6,6 @@ import {
   type HasKeysetKeys,
   type P2PKOptions,
   Amount,
-  deriveP2BKBlindedPubkeys,
 } from '@cashu/cashu-ts'
 import type {
   Keyset,
@@ -36,42 +35,24 @@ function toKeyset(keyset: HasKeysetKeys): Keyset {
   return { id: keyset.id, keys }
 }
 
-function toNitroP2PKOptions(p2pk: P2PKOptions): {
-  nitro: NitroP2PKOptions
-  ephemeralE?: string
-} {
+function toNitroP2PKOptions(p2pk: P2PKOptions): NitroP2PKOptions {
   const normalized = normalizeP2PKOptions(p2pk)
-  let lockKeys = normalized.pubkeys
-  let refundKeys = normalized.refundKeys
-
-  let ephemeralE: string | undefined
-  if (p2pk.blindKeys) {
-    const numLock = lockKeys.length
-    const ordered = [...lockKeys, ...refundKeys]
-    // TODO: do it on the native side
-    const { blinded, Ehex } = deriveP2BKBlindedPubkeys(ordered)
-    lockKeys = blinded.slice(0, numLock)
-    refundKeys = blinded.slice(numLock)
-    ephemeralE = Ehex
-  }
 
   if (normalized.additionalTags) {
     for (const tag of normalized.additionalTags) assertValidTagKey(tag[0])
   }
 
   return {
-    nitro: {
-      pubkeys: lockKeys,
-      locktime: normalized.locktime,
-      refundKeys: refundKeys.length > 0 ? refundKeys : undefined,
-      requiredSignatures: normalized.requiredSignatures,
-      requiredRefundSignatures: normalized.requiredRefundSignatures,
-      additionalTags: normalized.additionalTags?.map((tag) => Array.from(tag)),
-      blindKeys: undefined,
-      sigFlag: normalized.sigFlag,
-      hashlock: normalized.hashlock,
-    },
-    ephemeralE,
+    pubkeys: normalized.pubkeys,
+    locktime: normalized.locktime,
+    refundKeys:
+      normalized.refundKeys.length > 0 ? normalized.refundKeys : undefined,
+    requiredSignatures: normalized.requiredSignatures,
+    requiredRefundSignatures: normalized.requiredRefundSignatures,
+    additionalTags: normalized.additionalTags?.map((tag) => Array.from(tag)),
+    blindKeys: p2pk.blindKeys,
+    sigFlag: normalized.sigFlag,
+    hashlock: normalized.hashlock,
   }
 }
 
@@ -82,14 +63,12 @@ function uint8ArrayToArrayBuffer(arr: Uint8Array): ArrayBuffer {
   ) as ArrayBuffer
 }
 
-function nativeToOutputData(
-  native: {
-    blindedMessage: { amount: bigint; B_: string; id: string }
-    blindingFactor: string
-    secret: string
-  },
-  ephemeralE?: string
-): OutputData {
+function nativeToOutputData(native: {
+  blindedMessage: { amount: bigint; B_: string; id: string }
+  blindingFactor: string
+  secret: string
+  ephemeralE: string
+}): OutputData {
   return new OutputData(
     {
       amount: Amount.from(native.blindedMessage.amount),
@@ -98,7 +77,7 @@ function nativeToOutputData(
     },
     BigInt('0x' + native.blindingFactor),
     new TextEncoder().encode(native.secret),
-    ephemeralE
+    native.ephemeralE.length > 0 ? native.ephemeralE : undefined
   )
 }
 
@@ -116,15 +95,14 @@ export class NativeOutputCreator implements OutputDataCreator {
     keyset: HasKeysetKeys,
     customSplit?: AmountLike[]
   ): OutputData[] {
-    const { nitro, ephemeralE } = toNitroP2PKOptions(p2pk)
     return this._native
       .createP2PKData(
-        nitro,
+        toNitroP2PKOptions(p2pk),
         toUInt64(amount),
         toKeyset(keyset),
         customSplit?.map(toUInt64)
       )
-      .map((n) => nativeToOutputData(n, ephemeralE))
+      .map(nativeToOutputData)
   }
 
   createSingleP2PKData(
@@ -132,10 +110,12 @@ export class NativeOutputCreator implements OutputDataCreator {
     amount: AmountLike,
     keysetId: string
   ): OutputData {
-    const { nitro, ephemeralE } = toNitroP2PKOptions(p2pk)
     return nativeToOutputData(
-      this._native.createSingleP2PKData(nitro, toUInt64(amount), keysetId),
-      ephemeralE
+      this._native.createSingleP2PKData(
+        toNitroP2PKOptions(p2pk),
+        toUInt64(amount),
+        keysetId
+      )
     )
   }
 
@@ -150,7 +130,7 @@ export class NativeOutputCreator implements OutputDataCreator {
         toKeyset(keyset),
         customSplit?.map(toUInt64)
       )
-      .map((n) => nativeToOutputData(n))
+      .map(nativeToOutputData)
   }
 
   createSingleRandomData(amount: AmountLike, keysetId: string): OutputData {
@@ -174,7 +154,7 @@ export class NativeOutputCreator implements OutputDataCreator {
         toKeyset(keyset),
         customSplit?.map(toUInt64)
       )
-      .map((n) => nativeToOutputData(n))
+      .map(nativeToOutputData)
   }
 
   createSingleDeterministicData(
