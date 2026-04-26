@@ -417,15 +417,14 @@ namespace margelo::nitro::nutpatch {
         const Keyset& keyset,
         const std::optional<std::vector<uint64_t>>& customSplit
     ) {
-        // Blind ONCE so every output in the batch shares the same ephemeral E.
-        NitroP2PKOptions prepared = p2pk;
-        const std::string ephemeralE = apply_p2bk_blinding(prepared);
-
         const auto amounts = splitAmounts(amount, keyset, customSplit);
         std::vector<NativeOutputData> result;
         result.reserve(amounts.size());
-        for (uint32_t a : amounts)
+        for (uint32_t a : amounts) {
+            NitroP2PKOptions prepared = p2pk;
+            const std::string ephemeralE = apply_p2bk_blinding(prepared);
             result.push_back(buildP2PKOutput(prepared, a, keyset.id, ephemeralE));
+        }
         return result;
     }
 
