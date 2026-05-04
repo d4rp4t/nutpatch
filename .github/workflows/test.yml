@@ -19,7 +19,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'latest'
           cache: 'npm'
       - run: npm ci
       - name: Typecheck
@@ -38,7 +38,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'latest'
           cache: 'npm'
       - run: npm ci
       - name: Regenerate bindings
@@ -60,7 +60,7 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'latest'
           cache: 'npm'
       - run: npm ci
       - name: Configure CMake
